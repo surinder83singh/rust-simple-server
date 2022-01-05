@@ -128,7 +128,7 @@ fn build_response(file_path:&Path, content_type:&str)->Vec<u8>{
     response
 }
 
-fn handle_write(args:HashMap<String, String>, mut stream: TcpStream) {
+fn handle_write(folder:String, args:HashMap<String, String>, mut stream: TcpStream) {
     let mut file = "index.html";
     let mut method = "GET";
     if let Some(m) = args.get("method"){
@@ -143,7 +143,7 @@ fn handle_write(args:HashMap<String, String>, mut stream: TcpStream) {
 
     println!("file:{:?}, method:{:?}", file, method);
 
-    let file_path = "./http".to_string()+file;
+    let file_path = "./".to_string()+&folder+file;
     let path = Path::new(&file_path);
     let res:Vec<u8>;
     let res_str:String;
@@ -183,17 +183,21 @@ fn handle_write(args:HashMap<String, String>, mut stream: TcpStream) {
     stream.flush().unwrap();
 }
 
-fn handle_client(stream: TcpStream) {
+fn handle_client(folder:String, stream: TcpStream) {
     let req_args = handle_read(&stream);
-    handle_write(req_args, stream);
+    handle_write(folder, req_args, stream);
 }
 
 fn main() {
     let mut port = 8080;
     let mut args = env::args();
+    let mut folder = "http".to_string();
     args.next();
     if let Some(p) = args.next(){
         port = p.parse::<u16>().unwrap();
+    }
+    if let Some(p) = args.next(){
+        folder = p;
     }
     let listener = TcpListener::bind(format!("127.0.0.1:{}", port)).unwrap();
     println!("Listening for connections on port {}", port);
@@ -201,8 +205,9 @@ fn main() {
     for stream in listener.incoming() {
         match stream {
             Ok(stream) => {
+                let dir = folder.clone();
                 thread::spawn(|| {
-                    handle_client(stream)
+                    handle_client(dir, stream)
                 });
             }
             Err(e) => {
